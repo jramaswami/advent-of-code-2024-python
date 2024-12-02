@@ -34,13 +34,32 @@ def test_solve1():
     assert solve1(data) == 2
 
 
+def module_dampener(report):
+    report0 = list(report)
+    yield tuple(report0)
+    for i in range(len(report)):
+        yield tuple(report0[:i] + report[i+1:])
+
+
+def solve2(data):
+    return sum(any(is_safe(r) for r in module_dampener(report)) for report in data)
+
+
+def test_solve2():
+    data = read_data(os.path.join('data', 'test02a.txt'))
+    assert solve2(data) == 4
+
+
 def main():
     "Main program"
     data = read_data(os.path.join('data', 'input02.txt'))
     soln = solve1(data)
     print('Part 1:', soln)
-
+    assert soln == 598
+    soln = solve2(data)
+    print('Part 2:', soln)
     pyperclip.copy(soln)
+
 
 if __name__ == '__main__':
     sys.exit(main())
