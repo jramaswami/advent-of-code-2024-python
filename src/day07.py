@@ -1,4 +1,5 @@
 import collections
+import operator
 import os
 import sys
 
@@ -19,7 +20,7 @@ def parse_input(filepath):
     return tuple(calibrations)
 
 
-def is_true(calibration):
+def is_true(calibration, operations):
     # (curr value, curr index)
     queue = collections.deque()
     queue.append((calibration.numbers[0], 1))
@@ -29,18 +30,33 @@ def is_true(calibration):
             if curr_value == calibration.test_value:
                 return True
         else:
-            queue.append((curr_value + calibration.numbers[curr_index], curr_index + 1))
-            queue.append((curr_value * calibration.numbers[curr_index], curr_index + 1))
+            for operator in operations:
+                queue.append((operator(curr_value, calibration.numbers[curr_index]), curr_index + 1))
     return False
 
 
 def solve1(calibrations):
-    return sum(c.test_value for c in calibrations if is_true(c))
+    operations = (operator.mul, operator.add)
+    return sum(c.test_value for c in calibrations if is_true(c, operations))
 
 
 def test_solve1():
     calibrations = parse_input(os.path.join('data', 'test07a.txt'))
     assert solve1(calibrations) == 3749
+
+
+def concatenate(a, b):
+    return int(str(a)+str(b))
+
+
+def solve2(calibrations):
+    operations = (operator.mul, operator.add, concatenate)
+    return sum(c.test_value for c in calibrations if is_true(c, operations))
+
+
+def test_solve2():
+    calibrations = parse_input(os.path.join('data', 'test07a.txt'))
+    assert solve2(calibrations) == 11387
 
 
 def main():
@@ -49,6 +65,9 @@ def main():
     soln = solve1(calibrations)
     print('Part 1:', soln)
     assert soln == 303876485655
+    soln = solve2(calibrations)
+    print('Part 2:', soln)
+    assert soln == 146111650210682
 
     pyperclip.copy(soln)
 
