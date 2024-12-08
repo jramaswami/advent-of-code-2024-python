@@ -1,5 +1,6 @@
 import collections
 import dataclasses
+import math
 import os
 import sys
 
@@ -11,6 +12,20 @@ class Antenna:
     label: str
     x: int
     y: int
+
+    def slope(self, other):
+        dy = self.y - other.y
+        dx = self.x - other.x
+
+        g = math.gcd(abs(dy), abs(dx))
+
+        dy //= g
+        dx //= g
+
+        return dy, dx
+
+    def move(self, dy, dx):
+        return Antenna(self.label, self.x + dx, self.y + dy)
 
 
 def parse_input(filepath):
@@ -78,12 +93,51 @@ def test_solve1():
     assert solve1(grid) == 14
 
 
+def solve2(grid):
+    antennas = []
+    Y = len(grid)
+    X = len(grid[0])
+    for r, row in enumerate(grid):
+        y = Y - 1 - r
+        for x, value in enumerate(row):
+            if value != '.':
+                antennas.append(Antenna(value, x, y))
+
+    antinode_locations = set(((a.x, a.y) for a in antennas))
+    for i, antenna1 in enumerate(antennas):
+        for antenna2 in antennas[i+1:]:
+            if antenna1.label == antenna2.label:
+                dy, dx = antenna1.slope(antenna2)
+                antinode = antenna1.move(dy, dx)
+                while inbounds(grid, antinode):
+                    antinode_locations.add((antinode.x, antinode.y))
+                    antinode = antinode.move(dy, dx)
+                antinode = antenna1.move(-dy, -dx)
+                while inbounds(grid, antinode):
+                    antinode_locations.add((antinode.x, antinode.y))
+                    antinode = antinode.move(-dy, -dx)
+
+    return len(antinode_locations)
+
+
+def test_solve2():
+    grid = parse_input(os.path.join('data', 'test08b.txt'))
+    assert solve2(grid) == 9
+
+    grid = parse_input(os.path.join('data', 'test08a.txt'))
+    assert solve2(grid) == 34
+
+
 def main():
     "Main program"
     grid = parse_input(os.path.join('data', 'input08.txt'))
     soln = solve1(grid)
     print('Part 1:', soln)
     assert soln == 409
+
+    soln = solve2(grid)
+    print('Part 2:', soln)
+    assert soln == 1308
 
     pyperclip.copy(soln)
 
