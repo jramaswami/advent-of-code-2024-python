@@ -65,12 +65,51 @@ def test_solve1():
     assert solve1(grid) == 36
 
 
+def find_trails(grid, trailhead):
+    """Return the number of paths that reach a peak from the given trailhead
+
+    trailhead: tuple of ints representing the row and column index of trailhead
+    """
+    # BFS
+    soln = 0
+    queue = collections.deque()
+    queue.append(trailhead)
+    while queue:
+        r, c = queue.popleft()
+        x = grid[r][c]
+        if x == 9:
+            soln += 1
+        for r0, c0 in neighbors(grid, r, c):
+            y = grid[r0][c0]
+            if x + 1 == y:
+                queue.append((r0, c0))
+    return soln
+
+
+def solve2(grid):
+    trailheads = []
+    # Find the start points.
+    for r, row in enumerate(grid):
+        for c, val in enumerate(row):
+            if val == 0:
+                trailheads.append((r, c))
+    return sum(find_trails(grid, t) for t in trailheads)
+
+
+def test_solve2():
+    grid = parse_input(os.path.join('data', 'test10a.txt'))
+    assert solve2(grid) == 81
+
+
 def main():
     "Main program"
     grid = parse_input(os.path.join('data', 'input10.txt'))
     soln = solve1(grid)
     print('Part 1:', soln)
     assert soln == 717
+    soln = solve2(grid)
+    print('Part 2:', soln)
+    assert soln == 1686
     pyperclip.copy(soln)
 
 
