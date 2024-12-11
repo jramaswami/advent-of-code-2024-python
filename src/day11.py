@@ -1,3 +1,4 @@
+import functools
 import os
 import sys
 
@@ -51,10 +52,41 @@ def solve1(stones, ticks=25):
     return len(stones)
 
 
+def tick_stone(stone):
+    new_stones = []
+    if stone == '0':
+        new_stones.append('1')
+    elif len(stone) % 2 == 0:
+        m = len(stone) // 2
+        new_stones.append(str(int(stone[:m])))
+        new_stones.append(str(int(stone[m:])))
+    else:
+        new_stones.append(str(int(stone) * 2024))
+    return tuple(new_stones)
+
+
 def test_solve1():
     stones = tuple('125 17'.split())
     assert solve1(stones, 6) == 22
     assert solve1(stones) == 55312
+
+
+def solve2(stones, ticks=75):
+    """Use memoized recursion to solve part 2
+    """
+    @functools.cache
+    def rec(i, stone):
+        if i >= ticks:
+            return 1
+        return sum(rec(i+1, s) for s in tick_stone(stone))
+
+    return sum(rec(0, s) for s in stones)
+
+
+def test_solve2():
+    stones = tuple('125 17'.split())
+    assert solve2(stones, 6) == 22
+    assert solve2(stones, 25) == 55312
 
 
 def main():
@@ -63,6 +95,10 @@ def main():
     soln = solve1(stones)
     print('Part 1:', soln)
     assert soln == 189167
+
+    soln = solve2(stones)
+    print('Part 2:', soln)
+    assert soln == 225253278506288
 
     pyperclip.copy(soln)
 
