@@ -1,4 +1,5 @@
 import collections
+import dataclasses
 import enum
 import itertools
 import os
@@ -83,27 +84,40 @@ def is_boundary(grid, field_label, r, c):
     return False
 
 
+class Orientation(enum.IntEnum):
+    Top = 0
+    Bottom = 1
+    Left = 2
+    Right = 3
+
+
+@dataclasses.dataclass(frozen=True)
+class FenceSection:
+    orientation: Orientation
+    index: int
+    level: int
+
+
 def find_fence_sections(grid, field):
     """Find the fence sections for each field.  Fence sections
     will have a half-coordinate so they fall between the rows
     and columns.
     """
-    horizontal_fence_sections = []
-    vertical_fence_sections = []
+    fence_sections = []
     for r, c in field:
         top_r, top_c = r - 1, c
         if is_boundary(grid, grid[r][c], top_r, top_c):
-            horizontal_fence_sections.append((r - 0.5, c))
+            fence_sections.append(FenceSection(Orientation.Top, r, c))
         bottom_r, bottom_c = r + 1, c
         if is_boundary(grid, grid[r][c], bottom_r, bottom_c):
-            horizontal_fence_sections.append((r + 0.5, c))
+            fence_sections.append(FenceSection(Orientation.Bottom, r, c))
         left_r, left_c = r, c - 1
         if is_boundary(grid, grid[r][c], left_r, left_c):
-            vertical_fence_sections.append((r, c - 0.5))
+            fence_sections.append(FenceSection(Orientation.Left, c, r))
         right_r, right_c = r, c + 1
         if is_boundary(grid, grid[r][c], right_r, right_c):
-            vertical_fence_sections.append((r, c + 0.5))
-    return horizontal_fence_sections, vertical_fence_sections
+            fence_sections.append(FenceSection(Orientation.Right, c, r))
+    return fence_sections
 
 
 class UnionFind:
@@ -129,33 +143,20 @@ class UnionFind:
 
 
 def solve2(grid):
-    for row in grid:
-        print(''.join(row))
-
     soln = 0
     visited = [[False for _ in row] for row in grid]
     for r, row in enumerate(grid):
         for c, val in enumerate(row):
             if not visited[r][c]:
                 field = find_field(grid, visited, r, c)
-                sides = 0
-                horizontal_fence_sections, vertical_fence_sections = find_fence_sections(grid, field)
-                uf = UnionFind(len(horizontal_fence_sections))
-                for i, (r1, c1) in enumerate(horizontal_fence_sections):
-                    for j, (r2, c2) in enumerate(horizontal_fence_sections[i+1:], start=i+1):
-                        if r1 == r2 and abs(c1 - c2) == 1:
+                fence_sections = find_fence_sections(grid, field)
+                uf = UnionFind(len(fence_sections))
+                for i, fs1 in enumerate(fence_sections):
+                    for j, fs2 in enumerate(fence_sections[i+1:], start=i+1):
+                        if fs1.orientation == fs2.orientation and fs1.index == fs2.index and abs(fs1.level - fs2.level) == 1:
                             uf.union(i, j)
-                sides += uf.n
-                print('horiz', uf.n)
-                uf = UnionFind(len(vertical_fence_sections))
-                for i, (r1, c1) in enumerate(vertical_fence_sections):
-                    for j, (r2, c2) in enumerate(vertical_fence_sections[i+1:], start=i+1):
-                        if c1 == c2 and abs(r1 - r2) == 1:
-                            uf.union(i, j)
-                sides += uf.n
-                print('vert', uf.n)
+                sides = uf.n
                 area = len(field)
-                print(f'{r=} {c=} {grid[r][c]} {sides=} {area=}')
                 soln += (area * sides)
     return soln
 
@@ -170,6 +171,12 @@ def test_solve2():
     grid = parse_input(os.path.join('data', 'test12f.txt'))
     assert solve2(grid) == 368
 
+    grid = parse_input(os.path.join('data', 'test12a.txt'))
+    assert solve2(grid) == 436
+
+    grid = parse_input(os.path.join('data', 'test12b.txt'))
+    assert solve2(grid) == 1206
+
 
 def main():
     "Main program"
@@ -177,6 +184,9 @@ def main():
     soln = solve1(grid)
     print('Part 1:', soln)
     assert soln == 1467094
+    soln = solve2(grid)
+    print('Part 2:', soln)
+    assert soln == 881182
     pyperclip.copy(soln)
 
 
