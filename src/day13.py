@@ -1,11 +1,9 @@
 import dataclasses
+import math
 import os
 import sys
 
 import pyperclip
-
-
-INF = pow(10, 10)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -67,21 +65,41 @@ def parse_input(filepath):
 
 
 def min_cost(claw_machine, a_cost=3, b_cost=1):
-    min_cost = INF
-    for a_pushes in range(101):
-        claw_location = (claw_machine.button_a * a_pushes)
-        delta = claw_machine.prize_location - claw_location
-        b_pushes = delta.x // claw_machine.button_b.x
-        if (claw_machine.button_b * b_pushes) == delta:
-            min_cost = min(min_cost, (a_cost * a_pushes) + (b_cost * b_pushes))
-    return min_cost
+    ax, ay = claw_machine.button_a.x, claw_machine.button_a.y
+    bx, by = claw_machine.button_b.x, claw_machine.button_b.y
+    px, py = claw_machine.prize_location.x, claw_machine.prize_location.y
+
+    # ax(x) + bx(x) = px
+    # ay(y) + by(y) = py
+
+    # Eliminate a pushes
+    l = math.lcm(ax, ay)
+    bx_ = bx * (l // ax)
+    by_ = by * (l // ay)
+    px_ = px * (l // ax)
+    py_ = py * (l // ay)
+
+    # Solve for b pushes
+    b0 = bx_ - by_
+    p0 = px_ - py_
+    b_pushes = p0 / b0
+
+    # Solve for a pushes
+    # ax = tx - bx
+    a_pushes = (px - (b_pushes * bx)) / ax
+
+    # Only return integer solutions
+    a_pushes, b_pushes = int(a_pushes), int(b_pushes)
+    if (a_pushes * ax) + (b_pushes * bx) == px and (a_pushes * ay) + (b_pushes * by) == py:
+        return (a_cost * a_pushes) + (b_cost * b_pushes)
+    return None
 
 
 def solve1(claw_machines, a_cost=3, b_cost=1):
     soln = 0
     for claw_machine in claw_machines:
         cost = min_cost(claw_machine, a_cost, b_cost)
-        if cost < INF:
+        if cost is not None:
             soln += cost
     return soln
 
@@ -91,12 +109,29 @@ def test_solve1():
     assert solve1(claw_machines) == 480
 
 
+def solve2(claw_machines, a_cost=3, b_cost=1, delta=10000000000000):
+    delta_vector = Vector(delta, delta)
+    soln = 0
+    for claw_machine in claw_machines:
+        claw_machine0 = ClawMachine(
+            claw_machine.button_a, claw_machine.button_b,
+            claw_machine.prize_location + delta_vector
+        )
+        cost = min_cost(claw_machine0, a_cost, b_cost)
+        if cost is not None:
+            soln += cost
+    return soln
+
+
 def main():
     "Main program"
     claw_machines = parse_input(os.path.join('data', 'input13.txt'))
     soln = solve1(claw_machines)
     print('Part 1:', soln)
     assert soln == 29023
+    soln = solve2(claw_machines)
+    print('Part 2:', soln)
+    assert soln == 96787395375634
     pyperclip.copy(soln)
 
 
