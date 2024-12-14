@@ -87,13 +87,43 @@ def test_solve1():
     assert solve1(robots, Vector(11, 7)) == 12
 
 
+def print_grid(robots, grid_limits):
+    grid = [[' ' for _ in range(grid_limits.x)] for _ in range(grid_limits.y)]
+    for robot in robots:
+        grid[robot.position.y][robot.position.x] = '#'
+    print('\n'.join(''.join(row) for row in grid))
+
+
+def solve2(robots, grid_limits: Vector):
+    # All robots move through a cycle of length 10403
+    # There are 500 robots
+    # Most(?) of the robots are involved in the christmas tree
+    most = len(robots) // 2
+    soln = 10404
+    for tick in range(10403):
+        quadrants = collections.defaultdict(int)
+        for robot in robots:
+            quadrants[get_quadrant(robot, grid_limits)] += 1
+        if any(x > most for q, x in quadrants.items() if q != 'None'):
+            # print('*'*140)
+            # print(tick)
+            # print('*'*140)
+            # print_grid(robots, grid_limits)
+            return tick
+        robots = [r.move(grid_limits,1) for r in robots]
+
+
 def main():
     "Main program"
     robots = parse_input(os.path.join('data', 'input14.txt'))
     soln = solve1(robots, Vector(101, 103))
     print('Part 1:', soln)
     assert soln == 224969976
+    soln = solve2(robots, Vector(101, 103))
+    print('Part 2:', soln)
+    assert soln == 7892
     pyperclip.copy(soln)
+
 
 
 if __name__ == '__main__':
