@@ -1,23 +1,66 @@
 import os
-import logging
 import sys
 
 import pyperclip
 
 
+class Direction:
+    def __init__(self, r, c):
+        self.row = r
+        self.column = c
 
-def configure_logging(log_level):
-    logger = logging.getLogger()
-    ch = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    ch.setLevel(log_level)
-    ch.setFormatter(formatter)
-    fh = logging.FileHandler('log15.txt', 'w')
-    fh.setLevel(logging.DEBUG)
-    fh.setFormatter(formatter)
-    logger.addHandler(ch)
-    logger.addHandler(fh)
-    logger.setLevel(log_level)
+    def __repr__(self):
+        return f'Direction({self.row}, {self.column})'
+
+
+class Box1:
+    def __init__(self, r, c):
+        self.row = r
+        self.column = c
+
+    def __repr__(self):
+        return f'Box1({self.row}, {self.column})'
+
+
+class Wall:
+    def __init__(self, r, c):
+        self.row = r
+        self.column = c
+
+    def __repr__(self):
+        return f'Wall({self.row}, {self.column})'
+
+
+class Robot:
+    def __init__(self, r, c):
+        self.row = r
+        self.column = c
+
+    def __repr__(self):
+        return f'Robot({self.row}, {self.column})'
+
+
+def can_move(item, direction, items):
+    if isinstance(item, Wall):
+        return False
+
+    r0, c0 = item.row + direction.row, item.column + direction.column
+    result = True
+    for item0 in items:
+        if item0.row == r0 and item0.column == c0:
+            result = result and can_move(item0, direction, items)
+    return result
+
+
+def move(item, direction, items):
+    assert not isinstance(item, Wall)
+    r0, c0 = item.row + direction.row, item.column + direction.column
+    for item0 in items:
+        if item0.row == r0 and item0.column == c0:
+            move(item0, direction, items)
+    assert not any(item.row == r0 and item.column == c0 for item in items)
+    item.row = r0
+    item.column = c0
 
 
 def parse_input(filepath):
@@ -37,108 +80,52 @@ def parse_input(filepath):
     return tuple(grid), tuple(instructions)
 
 
-
-def grid_to_string(grid, not_boxes, robot):
-    grid0 = [['O' for _ in row] for row in grid]
-    for r, c in not_boxes:
-        if grid[r][c] == '#':
-            grid0[r][c] = '#'
-        else:
-            grid0[r][c] = '.'
-    grid0[robot[0]][robot[1]] = '@'
+def make_grid(items, robot, N, M):
+    grid0 = [['.' for _ in range(M)] for _ in range(M)]
+    for item in items:
+        if isinstance(item, Wall):
+            grid0[item.row][item.column] = '#'
+        elif isinstance(item, Box1):
+            grid0[item.row][item.column] = 'O'
+    grid0[robot.row][robot.column] = '@'
     return '\n'.join(''.join(row) for row in grid0)
 
 
 def solve1(grid, instructions):
-    logger = logging.getLogger()
-
-    R, C = 0, 1
     N, M = len(grid), len(grid[0])
-
-    not_boxes = set()
+    # Find items
+    robot = None
+    items = []
     for r, row in enumerate(grid):
         for c, val in enumerate(row):
             if val == '@':
-                robot = r, c
-            if val != 'O':
-                not_boxes.add((r, c))
+                robot = Robot(r, c)
+            elif val == '#':
+                items.append(Wall(r, c))
+            elif val == 'O':
+                items.append(Box1(r, c))
 
-    logger.info('Initial grid:\n%s', grid_to_string(grid, not_boxes, robot))
+    assert robot
+    assert items
+    directions = {
+        '>': Direction(0, 1),
+        '<': Direction(0, -1),
+        '^': Direction(-1, 0),
+        'v': Direction(1, 0)
+    }
 
+    print(make_grid(items, robot, N, M))
     for i, instruction in enumerate(instructions):
-        logger.debug('Robot currently located at %s', robot)
-        logger.info('Instruction %d: %s', i, instruction)
-        match instruction:
-            case '>':
-                # Find the least not box greater than the robot in the current row
-                logger.debug('Not boxes in same row: %s', [nb for nb in not_boxes if nb[R] == robot[R]])
-                target_posn = (robot[R], M-1)
-                for not_box in not_boxes:
-                    if not_box[R] == robot[R] and robot[C] < not_box[C]:
-                        target_posn = min(target_posn, not_box)
-                # If the target position is a space then swap the space to the
-                # robot and move the robot
-                logger.debug('Target posn = %s', target_posn)
-                if grid[target_posn[R]][target_posn[C]] != '#':
-                    not_boxes.remove(target_posn)
-                    not_boxes.add(robot)
-                    robot = (robot[R], robot[C]+1)
-                    not_boxes.add(robot)
-            case '<':
-                # Find the greatest not box less than the robot in the current row
-                logger.debug('Not boxes in same row: %s', [nb for nb in not_boxes if nb[R] == robot[R]])
-                target_posn = (robot[R], 0)
-                for not_box in not_boxes:
-                    if not_box[R] == robot[R] and not_box[C] < robot[C]:
-                        target_posn = max(target_posn, not_box)
-                # If the target position is a space then swap the space to the
-                # robot and move the robot
-                if grid[target_posn[R]][target_posn[C]] != '#':
-                    not_boxes.remove(target_posn)
-                    not_boxes.add(robot)
-                    robot = (robot[R], robot[C]-1)
-                    not_boxes.add(robot)
-            case '^':
-                # Find the greatest not box less than robot in the current column
-                target_posn = (0, robot[C])
-                logger.debug('Not boxes in same column: %s', [nb for nb in not_boxes if nb[C] == robot[C]])
-                for not_box in not_boxes:
-                    if not_box[C] == robot[C] and not_box[R] < robot[R]:
-                        target_posn = max(target_posn, not_box)
-                logger.debug('Target posn = %s', target_posn)
-                # If the target position is a space then swap the space to the
-                # robot and move the robot
-                if grid[target_posn[R]][target_posn[C]] != '#':
-                    not_boxes.remove(target_posn)
-                    not_boxes.add(robot)
-                    robot = (robot[R]-1, robot[C])
-                    not_boxes.add(robot)
-            case 'v':
-                # Find the least not box greater than robot in the current column
-                target_posn = (N-1, robot[C])
-                logger.debug('Not boxes in same column: %s', [nb for nb in not_boxes if nb[C] == robot[C]])
-                for not_box in not_boxes:
-                    if not_box[C] == robot[C] and robot[R] < not_box[R]:
-                        target_posn = min(target_posn, not_box)
-                # If the target position is a space then swap the space to the
-                # robot and move the robot
-                logger.debug('Target posn = %s %s', target_posn)
-                if grid[target_posn[R]][target_posn[C]] != '#':
-                    not_boxes.remove(target_posn)
-                    not_boxes.add(robot)
-                    robot = (robot[R]+1, robot[C])
-                    not_boxes.add(robot)
-            case other_instruction:
-                raise ValueError(f'Unrecognized instruction: {other_instruction}')
-
-        logger.info('Grid:\n%s', grid_to_string(grid, not_boxes, robot))
+        print(i, instruction, robot)
+        direction = directions[instruction]
+        if can_move(robot, direction, items):
+            move(robot, direction, items)
+        print(make_grid(items, robot, N, M))
 
     soln = 0
-    for r, row in enumerate(grid):
-        for c, _ in enumerate(row):
-            if (r, c) not in not_boxes:
-                # (r, c) is a box
-                soln += (100 * r) + c
+    for item in items:
+        if isinstance(item, Box1):
+            soln += (100 * item.row) + item.column
     return soln
 
 
@@ -152,12 +139,12 @@ def test_solve1():
 def main():
     "Main program"
     # Configure logging
-    configure_logging(logging.INFO)
     grid, instructions = parse_input(os.path.join('data', 'input15.txt'))
+    # grid, instructions = parse_input(os.path.join('data', 'test15a.txt'))
     soln = solve1(grid, instructions)
     print('Part 1:', soln)
     assert soln == 1509863
-    pyperclip.copy(soln)
+    # pyperclip.copy(soln)
 
 
 if __name__ == '__main__':
