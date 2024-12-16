@@ -76,7 +76,7 @@ def reconstruct_path(parents, source, sink, dirn):
     return tuple(reversed(path))
 
 
-def dijkstra(grid):
+def find_source_and_sink(grid):
     # Find start and end
     source = None
     sink = None
@@ -88,7 +88,11 @@ def dijkstra(grid):
                 sink = Vector(r, c)
     assert source
     assert sink
+    return source, sink
 
+
+def dijkstra(grid):
+    source, sink = find_source_and_sink(grid)
     parents = dict()
     distance = collections.defaultdict(lambda: math.inf)
     queue = []
@@ -107,7 +111,7 @@ def dijkstra(grid):
                     parents[(posn0, dirn0)] = (posn, dirn)
 
 
-def display(grid, path):
+def display_path(grid, path):
     grid0 = [list(row) for row in grid]
     DS = {
         Vector(0, 1): '>',
@@ -123,7 +127,7 @@ def display(grid, path):
 
 def solve1(grid):
     dist, path = dijkstra(grid)
-    # print(display(grid, path))
+    # print(display_path(grid, path))
     return dist
 
 
@@ -134,12 +138,70 @@ def test_solve1():
     assert solve1(grid) == 11048
 
 
+def display_seats(grid, seats):
+    grid0 = [list(row) for row in grid]
+    for seat in seats:
+        grid0[seat.row][seat.col] = 'O'
+    return '\n'.join(''.join(row) for row in grid0)
+
+
+def find_good_seats(grid, max_distance):
+    # Modified Dijkstra's algorithm to find paths
+    source, sink = find_source_and_sink(grid)
+    parents = dict()
+    distance = collections.defaultdict(lambda: math.inf)
+    queue = []
+    heapq.heappush(queue, (0, source, Vector(0, 1)))
+    distance[(source, Vector(0,1))] = 0
+    while queue:
+        dist, posn, dirn = heapq.heappop(queue)
+        if dist <= max_distance:
+            if distance[(posn, dirn)] == dist:
+                for posn0, dirn0, cost in neighbors(grid, posn, dirn):
+                    dist0 = dist + cost
+                    if dist0 < distance[(posn0, dirn0)]:
+                        distance[(posn0, dirn0)] = dist0
+                        heapq.heappush(queue, (dist0, posn0, dirn0))
+                        parents[(posn0, dirn0)] = [(posn, dirn)]
+                    elif dist0 == distance[(posn0, dirn0)]:
+                        parents[(posn0, dirn0)].append((posn, dirn))
+    # BFS to reconstruct paths and find seats
+    seats = set()
+    queue = collections.deque()
+    for dirn in DIRECTIONS:
+        if (sink, dirn) in parents:
+            queue.append((sink, dirn))
+    while queue:
+        posn, dirn = queue.popleft()
+        seats.add(posn)
+        for parent in parents.get((posn, dirn), []):
+            queue.append(parent)
+    return seats
+
+
+def solve2(grid):
+    max_distance, _ = dijkstra(grid)
+    seats = find_good_seats(grid, max_distance)
+    # print(display_seats(grid, seats))
+    return len(seats)
+
+
+def test_solve2():
+    grid = parse_input(os.path.join('data', 'test16a.txt'))
+    assert solve2(grid) == 45
+    grid = parse_input(os.path.join('data', 'test16b.txt'))
+    assert solve2(grid) == 64
+
+
 def main():
     "Main program"
     grid = parse_input(os.path.join('data', 'input16.txt'))
     soln = solve1(grid)
     print('Part 1:', soln)
     assert soln == 65436
+    soln = solve2(grid)
+    print('Part 2:', soln)
+    assert soln == 489
     pyperclip.copy(soln)
 
 
