@@ -7,6 +7,7 @@ import sys
 from typing import Set, List
 
 import pyperclip
+import tqdm
 
 
 @dataclasses.dataclass(frozen=True)
@@ -77,8 +78,19 @@ def solve1(blocks, grid_rows, grid_columns, blocks_to_use):
 
 def test_solve1():
     blocks = parse_input(os.path.join('data', 'test18a.txt'))
-    print(blocks)
     assert solve1(blocks, 6, 6, 12) == 22
+
+
+def solve2(blocks, grid_rows, grid_columns):
+    for blocks_to_use in tqdm.trange(len(blocks)+1):
+        shortest_path = solve1(blocks, grid_rows, grid_columns, blocks_to_use)
+        if shortest_path == math.inf:
+            return blocks[blocks_to_use-1]
+
+
+def test_solve2():
+    blocks = parse_input(os.path.join('data', 'test18a.txt'))
+    assert solve2(blocks, 6, 6) == Vector(6,1)
 
 
 def main():
@@ -87,6 +99,9 @@ def main():
     soln = solve1(blocks, 70, 70, 1024)
     print('Part 1:', soln)
     assert soln == 356
+    soln = solve2(blocks, 70, 70)
+    print('Part 2:', soln)
+    assert soln == Vector(r=22, c=33)
     pyperclip.copy(soln)
 
 
