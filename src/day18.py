@@ -7,7 +7,6 @@ import sys
 from typing import Set, List
 
 import pyperclip
-import tqdm
 
 
 @dataclasses.dataclass(frozen=True)
@@ -82,10 +81,19 @@ def test_solve1():
 
 
 def solve2(blocks, grid_rows, grid_columns):
-    for blocks_to_use in tqdm.trange(len(blocks)+1):
+    # Binary search the answer
+    lo = 0
+    hi = len(blocks)
+    soln = len(blocks)
+    while lo <= hi:
+        blocks_to_use = lo + ((hi - lo) // 2)
         shortest_path = solve1(blocks, grid_rows, grid_columns, blocks_to_use)
         if shortest_path == math.inf:
-            return blocks[blocks_to_use-1]
+            soln = min(soln, blocks_to_use)
+            hi = blocks_to_use - 1
+        else:
+            lo = blocks_to_use + 1
+    return blocks[soln-1]
 
 
 def test_solve2():
@@ -102,7 +110,7 @@ def main():
     soln = solve2(blocks, 70, 70)
     print('Part 2:', soln)
     assert soln == Vector(r=22, c=33)
-    pyperclip.copy(soln)
+    pyperclip.copy(f'{soln.r},{soln.c}')
 
 
 if __name__ == '__main__':
