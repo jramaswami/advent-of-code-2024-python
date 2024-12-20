@@ -1,12 +1,10 @@
 import collections
 import dataclasses
+import math
 import os
 import sys
 
 import pyperclip
-
-
-sys.setrecursionlimit(pow(10, 6))
 
 
 @dataclasses.dataclass(frozen=True)
@@ -18,7 +16,6 @@ class Vector:
         return Vector(self.row + other.row, self.col + other.col)
 
 
-
 def parse_input(filepath):
     grid = []
     with open(filepath, 'r') as infile:
@@ -26,7 +23,6 @@ def parse_input(filepath):
             line = line.strip()
             grid.append(tuple(line))
     return tuple(grid)
-
 
 
 def inbounds(grid, posn):
@@ -38,6 +34,17 @@ def inbounds(grid, posn):
 
 def neighbors(grid, posn):
     for offset in (Vector(0, 1), Vector(0, -1), Vector(1, 0), Vector(-1, 0)):
+        posn0 = posn + offset
+        if inbounds(grid, posn0):
+            yield posn0
+
+
+def cheat_neighbors(grid, posn):
+    cheat_offsets = (
+        Vector(1, 1), Vector(-1, 1), Vector(1, -1), Vector(-1, -1),
+        Vector(2, 0), Vector(-2, 0), Vector(0, 2), Vector(0, -2)
+    )
+    for offset in cheat_offsets:
         posn0 = posn + offset
         if inbounds(grid, posn0):
             yield posn0
@@ -61,34 +68,59 @@ def find_source_and_sink(grid):
     return source, sink
 
 
+def bfs(grid, origin):
+    distance = collections.defaultdict(lambda: math.inf)
+    queue = collections.deque()
+    distance[origin] = 0
+    queue.append(origin)
+    while queue:
+        posn = queue.popleft()
+        for posn0 in neighbors(grid, posn):
+            if not is_wall(grid, posn0) and distance[posn] + 1 < distance[posn0]:
+                distance[posn0] = distance[posn] + 1
+                queue.append(posn0)
+    return distance
+
+
+def compute_cheat_distances(grid, distance_from_source, distance_to_sink, shortest_path):
+    cheat_distances = []
+    # For each cell, see how much is saved if we cheat
+    for r, row in enumerate(grid):
+        for c, val in enumerate(grid):
+            posn = Vector(r, c)
+            if not is_wall(grid, posn):
+                # Get cheat neighbors
+                for posn0 in cheat_neighbors(grid, posn):
+                    if not is_wall(grid, posn0):
+                        d = distance_from_source[posn] + 2 + distance_to_sink[posn0]
+                        if d < shortest_path:
+                            cheat_distances.append(d)
+    return cheat_distances
+
+
 def solve1(grid):
     source, sink = find_source_and_sink(grid)
-
-    visited = set()
-    path_lengths = []
-    def dfs(posn, cheat, distance):
-        if posn == sink:
-            path_lengths.append((distance, cheat))
-        else:
-            visited.add(posn)
-            for posn0 in neighbors(grid, posn):
-                if posn0 in visited:
-                    continue
-                if is_wall(grid, posn0) and not cheat:
-                    dfs(posn0, True, distance+1)
-                else:
-                    dfs(posn0, cheat, distance+1)
-            visited.remove(posn)
-
-    dfs(source, False, 0)
-    print(path_lengths)
+    # BFS to compute the distance between each cell and the sink
+    distance_from_source = bfs(grid, source)
+    # BFS to compute the distance between each cell and the sink
+    distance_to_sink = bfs(grid, sink)
+    assert distance_from_source[sink] == distance_to_sink[source]
+    shortest_path = distance_to_sink[source]
+    # For each cell, compute the distance if you cheated from here
+    cheat_distances = compute_cheat_distances(
+        grid, distance_from_source, distance_to_sink, shortest_path
+    )
+    # Count the number of cheats that save 100+
+    save_freqs = collections.Counter(shortest_path - d for d in cheat_distances)
+    return sum(v for k, v in save_freqs.items() if k >= 100)
 
 
 def main():
     "Main program"
-    grid = parse_input(os.path.join('data', 'test20a.txt'))
+    grid = parse_input(os.path.join('data', 'input20.txt'))
     soln = solve1(grid)
     print('Part 1:', soln)
+    assert soln == 1378
     pyperclip.copy(soln)
 
 
