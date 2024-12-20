@@ -52,6 +52,7 @@ def cheat_neighbors(grid, init_posn, cheat_duration):
     next_posns = set()
     for _ in range(cheat_duration):
         for posn in curr_posns:
+            next_posns.add(posn)
             for offset in (Vector(0, 1), Vector(0, -1), Vector(1, 0), Vector(-1, 0)):
                 posn0 = posn + offset
                 next_posns.add(posn0)
@@ -95,7 +96,6 @@ def compute_cheat_distances(grid, distance_from_source, distance_to_sink, shorte
     cheat_distances = []
     all_cheat_offsets = list(cheat_neighbors(grid, Vector(0, 0), cheat_duration))
     all_cheat_offsets.sort()
-    print(all_cheat_offsets)
     # For each cell, see how much is saved if we cheat
     for r, row in enumerate(grid):
         for c, _ in enumerate(row):
@@ -130,21 +130,18 @@ def solve1(grid, saves_at_least=100, cheat_duration=2):
     )
     # Count the number of cheats that save 100+
     save_freqs = collections.Counter(shortest_path - d for d in cheat_distances)
-    # print(save_freqs)
     return sum(v for k, v in save_freqs.items() if k >= saves_at_least)
 
 
 def main():
     "Main program"
     grid = parse_input(os.path.join('data', 'input20.txt'))
-    # grid = parse_input(os.path.join('data', 'test20a.txt'))
     soln = solve1(grid, saves_at_least=100, cheat_duration=2)
     print('Part 1:', soln)
     assert soln == 1378
     soln = solve1(grid, saves_at_least=100, cheat_duration=20)
     print('Part 2:', soln)
-    # assert soln == 1378
-    # 519222 is too low
+    assert soln == 975379
     pyperclip.copy(soln)
 
 
