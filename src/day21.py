@@ -88,7 +88,8 @@ def compute_paths_between(grid, origin, dest):
     visited = set()
     max_length = abs(origin.row - dest.row) + abs(origin.col - dest.col)
     def dfs(p, acc):
-        if p == dest and len(acc) == max_length:
+        # if p == dest and len(acc) == max_length:
+        if p == dest:
             paths.append(''.join(acc))
             return
 
@@ -150,7 +151,6 @@ def shortest_paths_on_direction_pad(code, all_paths_on_direction_pad):
                     next_queue.add(p + q + r + 'A')
         curr_queue, next_queue = next_queue, set()
     return curr_queue
-
 
 
 def code_sequence_length(code, all_paths_on_number_pad, all_paths_on_direction_pad):
