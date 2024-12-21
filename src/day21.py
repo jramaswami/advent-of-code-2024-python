@@ -63,15 +63,19 @@ def translate(code, keypad_locations):
         next_key = keypad_locations[next_key_val]
         dr = next_key.row - curr_key.row
         dc = next_key.col - curr_key.col
-        extension = ''
+        extension_v = ''
+        extension_h = ''
         if dc < 0:
-            extension += ('<'*abs(dc))
+            extension_h = ('<'*abs(dc))
         elif dc > 0:
-            extension += ('>'*abs(dc))
+            extension_h = ('>'*abs(dc))
         if dr < 0:
-            extension += ('^'*abs(dr))
+            extension_v = ('^'*abs(dr))
         elif dr > 0:
-            extension += ('v'*abs(dr))
+            extension_v = ('v'*abs(dr))
+        extension = extension_v + extension_h
+        if curr_key.col == 0:
+            extension = extension_h + extension_v
         print('curr', curr_key, curr_key_val, 'next', next_key, next_key_val, f'{dr=} {dc=}', extension)
         translation.append(extension)
         curr_key = next_key
