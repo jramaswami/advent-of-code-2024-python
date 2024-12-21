@@ -157,53 +157,57 @@ def code_sequence_length(code, all_paths_on_number_pad, all_paths_on_direction_p
     robot1 = shortest_paths_number_pad(code, all_paths_on_number_pad)
 
     @functools.cache
-    def cost(direction_key, level):
+    def rec(direction_key, level):
         # print(f'cost({direction_key=}, {level=})')
         if level == 0:
             # Just count the key itself, because this is *my* directional keypad
-            return 1
+            return direction_key
         else:
-            result = math.inf
+            result = []
             # Go from A to directon_key
-            best_p = math.inf
+            best_p = None
             for p in all_paths_on_direction_pad['A'][direction_key]:
                 # print('Recursing on', p)
-                p_cost = 0
-                for dk in p:
-                    p_cost += cost(dk, level-1)
-                best_p = min(p_cost, best_p)
+                p0 = ''.join(rec(dk, level-1) for dk in p)
+                if best_p is None or len(p0) < len(best_p):
+                    best_p = p0
+                elif len(p0) == len(best_p):
+                    print('b OOPS!')
             # print('A ->', direction_key, 'costs', best_p)
+            result.append(best_p)
             # Push button
-            press_button = cost('A', level-1)
+            press_button = rec('A', level-1)
+            result.append(press_button)
             # print ('Pressing button costs', press_button)
-            best_p += press_button
             # Go from direction_key to A
-            best_q = math.inf
+            best_q = None
             for q in all_paths_on_direction_pad[direction_key]['A']:
-                q_cost = 0
-                for dk in q:
-                    q_cost += cost(dk, level-1)
-                best_q = min(q_cost, best_q)
+                q0 = ''.join(rec(dk, level-1) for dk in q)
+                if best_q is None or len(q0) < len(best_q):
+                    best_q = q0
+                elif len(q0) == len(best_q):
+                    print('q OOPS!')
             # print(direction_key, '-> A', 'costs', best_q)
+            result.append(best_q)
             # Push button
-            best_q += press_button
-            # print ('Pressing button costs', press_button)
-            result = min(result, best_p + best_q)
-        return result
+            result.append(press_button)
+            return ''.join(result)
 
-    soln = math.inf
+    soln = None
     for p in robot1:
-        cost_p = 0
+        best_p = []
         for a, b in zip(p[:-1], p[1:]):
-            min_cost_a_to_b = math.inf
+            best_a_to_b = None
             for a_to_b in all_paths_on_direction_pad[a][b]:
-                cost_a_to_b = 0
-                for pk in a_to_b:
-                    cost_a_to_b += cost(pk, 1)
-                min_cost_a_to_b = min(min_cost_a_to_b, cost_a_to_b)
-            cost_p += min_cost_a_to_b
-        soln = min(soln, cost_p)
-    return soln
+                path_a_to_b = ''.join(rec(pk, 1) for pk in a_to_b)
+                if best_a_to_b is None or len(path_a_to_b) < len(best_a_to_b):
+                    best_a_to_b = path_a_to_b
+            best_p.append(best_a_to_b)
+        best_p = ''.join(best_p)
+        if soln is None or len(best_p) < len(soln):
+            soln = best_p
+    print(soln)
+    return len(soln)
 
 
 def solve1(codes):
