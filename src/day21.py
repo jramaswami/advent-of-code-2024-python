@@ -79,10 +79,11 @@ def grid_path(grid, origin, dest):
     elif dc > 0:
         path.append('>' * dc)
     path = ''.join(path)
-    if not check_path(grid, origin, dest, path):
-        path = path[::-1]
-        assert check_path(grid, origin, dest, path)
-    return path
+    if check_path(grid, origin, dest, path):
+        yield path
+    path = path[::-1]
+    if check_path(grid, origin, dest, path):
+        yield path
 
 
 def code_from_path(path, grid, locations):
@@ -94,6 +95,14 @@ def code_from_path(path, grid, locations):
         else:
             curr_posn = curr_posn + OFFSETS[p]
     return ''.join(code)
+
+
+@dataclass.dataclasses(frozen = True)
+class QItem:
+    level: int
+    code: str
+    index: int
+    path: str
 
 
 def solve1(codes):
@@ -109,6 +118,32 @@ def solve1(codes):
             if val != '.':
                 dp_locations[val] = Vector(r, c)
 
+    # Turn into BFS to search each robot
+    # level, code, index, path
+    # where level is which robot, current code, index is code[index]
+    # path is the current path accumulator
+    # could also try to make recursive
+    curr_queue = set()
+    curr_queue.add(QItem(0, '029A', 0, ''))
+    next_queue = set()
+    while curr_queue:
+        for item in curr_queue:
+            if item.index >= len(item.code):
+                # Go to next level
+                next_queue.append(
+                    QItem(
+                        item.level + 1,
+                        item.path,
+                        0,
+                        ''
+                    )
+                )
+            else:
+                prev_key = 'A'
+                if item.index > 0:
+                    prev_key = item.code[item.index-1]
+
+
     # Robot 1
     robot1 = []
     for code in codes:
@@ -118,7 +153,10 @@ def solve1(codes):
             # Move to next key
             origin = np_locations[curr_key]
             dest = np_locations[next_key]
-            p = grid_path(NUMBER_PAD, origin, dest)
+            p = None
+            for p0 in grid_path(NUMBER_PAD, origin, dest):
+                if not p or len(p0) < len(p):
+                    p = p0
             # print(curr_key, next_key, p)
             path.append(p)
             # Press A
@@ -137,7 +175,10 @@ def solve1(codes):
             # Move to next key
             origin = dp_locations[curr_key]
             dest = dp_locations[next_key]
-            p = grid_path(DIRECTION_PAD, origin, dest)
+            p = None
+            for p0 in grid_path(DIRECTION_PAD, origin, dest):
+                if not p or len(p0) < len(p):
+                    p = p0
             path.append(p)
             # Press A
             path.append('A')
@@ -155,7 +196,10 @@ def solve1(codes):
             # Move to next key
             origin = dp_locations[curr_key]
             dest = dp_locations[next_key]
-            p = grid_path(DIRECTION_PAD, origin, dest)
+            p = None
+            for p0 in grid_path(DIRECTION_PAD, origin, dest):
+                if not p or len(p0) < len(p):
+                    p = p0
             path.append(p)
             # Press A
             path.append('A')
