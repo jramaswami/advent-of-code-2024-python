@@ -50,8 +50,19 @@ OFFSETS = {
 }
 
 
+def get_locations(grid):
+    locations = dict()
+    for r, row in enumerate(grid):
+        for c, val in enumerate(row):
+            if val != '.':
+                locations[val] = Vector(r, c)
+    return locations
+
+
 NUMBER_PAD = '789\n456\n123\n.0A'.split('\n')
 DIRECTION_PAD = '.^A\n<v>'.split('\n')
+NUMBER_PAD_LOCATIONS = get_locations(NUMBER_PAD)
+DIRECTION_PAD_LOCATIONS = get_locations(DIRECTION_PAD)
 
 
 def check_path(grid, origin, dest, path):
@@ -65,7 +76,7 @@ def check_path(grid, origin, dest, path):
     return curr == dest
 
 
-def grid_path(grid, origin, dest):
+def grid_paths(grid, origin, dest):
     # The path should be the manhattan distance
     dr = dest.row - origin.row
     dc = dest.col - origin.col
@@ -97,123 +108,51 @@ def code_from_path(path, grid, locations):
     return ''.join(code)
 
 
-@dataclass.dataclasses(frozen = True)
-class QItem:
-    level: int
-    code: str
-    index: int
-    path: str
+def all_paths(grid_name, prev_key, prev_code):
+    """Return all the possible codes that come from starting at prev_key
+    and produced from the prev_code
+
+    Use BFS to produce the codes.
+    """
+    result = []
+
+    # Choose grid and locations
+    if grid_name == 'd':
+        grid = DIRECTION_PAD
+        locations = DIRECTION_PAD_LOCATIONS
+    else:
+        grid = NUMBER_PAD
+        locations = NUMBER_PAD_LOCATIONS
+
+    # Queue = (prev key, curr code acc)
+    curr_queue = set()
+    curr_queue.add((prev_key, ''))
+    next_queue = set()
+    for i in range(len(prev_code)):
+        for prev_key, acc in curr_queue:
+            curr_key = prev_code[i]
+            origin = locations[prev_key]
+            dest = locations[curr_key]
+            for pt in grid_paths(grid, origin, dest):
+                next_queue.add((curr_key, acc + pt))
+        curr_queue, next_queue = next_queue, set()
+    return tuple(''.join(x[1]) for x in curr_queue)
+
+
+def robot(grid_name, prev_codes):
+    result = []
+    for prev_code in prev_codes:
+        prev_key = 'A'
+        result.extend(all_paths(grid_name, prev_key, prev_code))
+    return result
 
 
 def solve1(codes):
-    np_locations = dict()
-    for r, row in enumerate(NUMBER_PAD):
-        for c, val in enumerate(row):
-            if val != '.':
-                np_locations[val] = Vector(r, c)
-
-    dp_locations = dict()
-    for r, row in enumerate(DIRECTION_PAD):
-        for c, val in enumerate(row):
-            if val != '.':
-                dp_locations[val] = Vector(r, c)
-
-    # Turn into BFS to search each robot
-    # level, code, index, path
-    # where level is which robot, current code, index is code[index]
-    # path is the current path accumulator
-    # could also try to make recursive
-    curr_queue = set()
-    curr_queue.add(QItem(0, '029A', 0, ''))
-    next_queue = set()
-    while curr_queue:
-        for item in curr_queue:
-            if item.index >= len(item.code):
-                # Go to next level
-                next_queue.append(
-                    QItem(
-                        item.level + 1,
-                        item.path,
-                        0,
-                        ''
-                    )
-                )
-            else:
-                prev_key = 'A'
-                if item.index > 0:
-                    prev_key = item.code[item.index-1]
-
-
-    # Robot 1
-    robot1 = []
-    for code in codes:
-        path = []
-        curr_key = 'A'
-        for next_key in code:
-            # Move to next key
-            origin = np_locations[curr_key]
-            dest = np_locations[next_key]
-            p = None
-            for p0 in grid_path(NUMBER_PAD, origin, dest):
-                if not p or len(p0) < len(p):
-                    p = p0
-            # print(curr_key, next_key, p)
-            path.append(p)
-            # Press A
-            path.append('A')
-            curr_key = next_key
-        path = ''.join(path)
-        assert code == code_from_path(path, NUMBER_PAD, np_locations)
-        robot1.append(path)
-
-    # Robot 2
+    robot1 = robot('n', [codes[0]])
+    print(robot1)
     robot2 = []
-    for i, code in enumerate(robot1):
-        path = []
-        curr_key = 'A'
-        for next_key in code:
-            # Move to next key
-            origin = dp_locations[curr_key]
-            dest = dp_locations[next_key]
-            p = None
-            for p0 in grid_path(DIRECTION_PAD, origin, dest):
-                if not p or len(p0) < len(p):
-                    p = p0
-            path.append(p)
-            # Press A
-            path.append('A')
-            curr_key = next_key
-        path = ''.join(path)
-        assert code == code_from_path(path, DIRECTION_PAD, dp_locations)
-        robot2.append(path)
-
-    # Robot 3
-    robot3 = []
-    for i, code in enumerate(robot2):
-        path = []
-        curr_key = 'A'
-        for next_key in code:
-            # Move to next key
-            origin = dp_locations[curr_key]
-            dest = dp_locations[next_key]
-            p = None
-            for p0 in grid_path(DIRECTION_PAD, origin, dest):
-                if not p or len(p0) < len(p):
-                    p = p0
-            path.append(p)
-            # Press A
-            path.append('A')
-            curr_key = next_key
-        path = ''.join(path)
-        assert code == code_from_path(path, DIRECTION_PAD, dp_locations)
-        robot3.append(path)
-
-    soln = 0
-    for code, path in zip(codes, robot3):
-        numeric_code = int(code[:-1])
-        path_length = len(path)
-        soln += (numeric_code * path_length)
-    return soln
+    for pt in robot1:
+        print(pt, '->', robot('d', pt))
 
 
 def main():
