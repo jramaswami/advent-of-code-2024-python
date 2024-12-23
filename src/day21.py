@@ -1,5 +1,7 @@
 import collections
 import dataclasses
+import functools
+import math
 import os
 import sys
 
@@ -64,10 +66,12 @@ def compute_all_paths(grid):
             lfrt = ('<' if dc < 0 else '>') * abs(dc)
             path1 = updn + lfrt
             if is_valid_path(grid, origin_posn, dest_posn, path1):
-                all_paths[origin_val][dest_val].append(path1)
+                # Add pressing A
+                all_paths[origin_val][dest_val].append(path1 + 'A')
             path2 = lfrt + updn
             if path2 != path1 and is_valid_path(grid, origin_posn, dest_posn, path2):
-                all_paths[origin_val][dest_val].append(path2)
+                # Add pressing the A
+                all_paths[origin_val][dest_val].append(path2 + 'A')
     return all_paths
 
 
@@ -101,7 +105,7 @@ def translate(device_name, code):
             prev_key = 'A' if i == 0 else code[i-1]
             curr_key = code[i]
             for path in paths_between(device_name, prev_key, curr_key):
-                queue.append((i+1, acc + path + 'A'))
+                queue.append((i+1, acc + path))
     return result
 
 
@@ -138,12 +142,49 @@ def test_solve1():
     assert solve1(codes) == 126384
 
 
+@functools.cache
+def get_cost(prev_key, next_key, robot_level, keypad='dp'):
+    keypad_paths = NP_PATHS if keypad == 'np' else DP_PATHS
+    # Base Case: return the length of the shortest path between prev_key and next_key
+    if robot_level == 0:
+        return min(len(path) for path in keypad_paths[prev_key][next_key])
+    # Recursive Case
+    best_cost = math.inf
+    for path in keypad_paths[prev_key][next_key]:
+        # Start with A
+        path = 'A' + path
+        cost = 0
+        for pk, nk in zip(path[:-1], path[1:]):
+            cost += get_cost(pk, nk, robot_level - 1, 'dp')
+        best_cost = min(best_cost, cost)
+    return best_cost
+
+
+def get_code_cost(code, robot_level, keypad):
+    code = 'A' + code
+    cost = 0
+    for pk, nk in zip(code[:-1], code[1:]):
+        cost += get_cost(pk, nk, robot_level, keypad)
+    return cost
+
+
+def solve2(codes, robot_level=2):
+    soln = 0
+    for code in codes:
+        cost = get_code_cost(code, robot_level, 'np')
+        soln += (cost * int(code[:-1]))
+    return soln
+
+
 def main():
     """Main program"""
     codes = parse_input(os.path.join('data', 'input21.txt'))
-    soln = solve1(codes)
+    soln = solve2(codes, 2)
     print('Part 1:', soln)
     assert soln == 211930
+    soln = solve2(codes, 25)
+    print('Part 2:', soln)
+    assert soln == 263492840501566
     pyperclip.copy(soln)
 
 
